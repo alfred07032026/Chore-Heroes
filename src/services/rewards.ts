@@ -95,23 +95,25 @@ export async function getShop(
 ): Promise<{ balance: number; items: ShopItem[] }> {
   const balance = await getBalance(db, childId);
   const rewards = await listRewards(db);
-  const week = weekStart(today);
-  const items: ShopItem[] = [];
-  for (const reward of rewards) {
-    const used = await usedThisWeek(db, childId, reward.id, week);
-    const pendingRow = await db.get<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM redemptions WHERE child_id = ? AND reward_id = ? AND status = 'requested'`,
-      [childId, reward.id],
-    );
-    const limitReached = reward.weeklyLimit !== null && used >= reward.weeklyLimit;
-    items.push({
+  const counts = await db.all<{ reward_id: string; used: number; pending: number }>(
+    `SELECT reward_id,
+            SUM(week_key = ? AND status IN ('requested','approved')) AS used,
+            SUM(status = 'requested') AS pending
+     FROM redemptions WHERE child_id = ? GROUP BY reward_id`,
+    [weekStart(today), childId],
+  );
+  const byReward = new Map(counts.map((c) => [c.reward_id, c]));
+  const items: ShopItem[] = rewards.map((reward) => {
+    const c = byReward.get(reward.id);
+    const used = c?.used ?? 0;
+    return {
       reward,
       affordable: balance >= reward.cost,
       missing: Math.max(0, reward.cost - balance),
-      limitReached,
-      pending: (pendingRow?.n ?? 0) > 0,
-    });
-  }
+      limitReached: reward.weeklyLimit !== null && used >= reward.weeklyLimit,
+      pending: (c?.pending ?? 0) > 0,
+    };
+  });
   return { balance, items };
 }
 

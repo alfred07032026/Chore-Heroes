@@ -111,7 +111,7 @@ export default function Shop() {
     >
       <StarJar balance={shop.balance} goal={goal} size={twoPane ? 200 : 110} />
       <Txt variant={twoPane ? 'label' : 'title'} center>
-        {twoPane ? 'My stars' : `${shop.balance} ★`}
+        My stars
       </Txt>
     </Card>
   );

@@ -55,6 +55,16 @@ describe('PIN', () => {
 });
 
 describe('math gate', () => {
+  it('has a hard level for PIN recovery (two-digit × two-digit)', () => {
+    for (const r of [0, 0.5, 0.999]) {
+      const c = makeMathChallenge(() => r, 'hard');
+      const [a, b] = c.prompt.match(/\d+/g)!.map(Number);
+      expect(a).toBeGreaterThanOrEqual(13);
+      expect(b).toBeGreaterThanOrEqual(12);
+      expect(c.answer).toBe(a! * b!);
+    }
+  });
+
   it('creates adult-level questions and checks answers', () => {
     let seed = 0.37;
     const rnd = () => (seed = ((seed * 9301 + 49297) % 233280) / 233280);

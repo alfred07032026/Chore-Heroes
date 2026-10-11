@@ -145,7 +145,8 @@ export default function Today() {
     setUndoTarget(null);
     if (r.kind === 'undone') feedback({ sound: 'gentle', say: 'Okay! It is back on your list.' });
     else if (r.kind === 'stars_spent') setToast('Those stars were already spent. Ask a grown-up.');
-    else setToast('A grown-up already checked this one.');
+    else if (r.kind === 'parent_checked') setToast('A grown-up already checked this one.');
+    else setToast('That job is from another day.');
   };
 
   const closeBadge = useCallback(() => {

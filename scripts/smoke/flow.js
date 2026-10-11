@@ -152,10 +152,55 @@ const W = Number(process.argv[3] || 820),
     await tid('task-Feed the pet').click();
     await page.waitForTimeout(1500);
     await shot('21-waiting');
+    // Reward request → parent approvals → erase all data
+    await page.waitForTimeout(2500);
+    await tid('open-shop').click();
+    await page.waitForTimeout(1500);
+    await tid('get-Extra bedtime story').click();
+    await page.waitForTimeout(600);
+    await shot('22-ask-grown-up');
+    await tid('shop-yes').click();
+    await page.waitForTimeout(800);
+    await shot('23-request-sent');
+    await tid('shop-ok').click();
+    await page.getByTestId('back-button').first().click();
+    await page.waitForTimeout(600);
+    await tid('switch-hero').click();
+    await page.waitForTimeout(800);
+    await tid('parent-button').click();
+    await page.waitForTimeout(800);
+    await pin('2580');
+    await page.waitForTimeout(1500);
+    await tid('nav-Approvals').click();
+    await page.waitForTimeout(1200);
+    await shot('24-inbox');
+    await tid('approve-Feed the pet').click();
+    await page.waitForTimeout(800);
+    await tid('approve-Extra bedtime story').click();
+    await page.waitForTimeout(1200);
+    await shot('25-inbox-empty');
+    await page.getByTestId('back-button').first().click();
+    await page.waitForTimeout(600);
+    await tid('nav-Settings').click();
+    await page.waitForTimeout(800);
+    const q2 = await tid('math-question').innerText();
+    const [a2, b2] = q2.match(/\d+/g).map(Number);
+    for (const d of String(a2 * b2)) await tid(`key-${d}`).click();
+    await tid('math-submit').click();
+    await page.waitForTimeout(800);
+    await tid('reset').click();
+    await page.waitForTimeout(500);
+    await tid('reset-confirm').fill('ERASE');
+    await tid('reset-go').click();
+    await page.waitForTimeout(2000);
+    await shot('26-after-reset');
+    if (!(await page.getByText('Welcome to Chore Heroes!').count()))
+      errors.push('reset did not return to setup');
   } catch (e) {
     errors.push('FLOW FAILED: ' + e.message);
     await page.screenshot({ path: `${SHOTS}/${tag}-zz-failure.png` });
   }
-  console.warn('ERRORS:\n' + errors.join('\n'));
+  const unique = [...new Set(errors)];
+  console.warn(`ERRORS (${unique.length} unique):\n` + unique.slice(0, 30).join('\n'));
   await browser.close();
 })();

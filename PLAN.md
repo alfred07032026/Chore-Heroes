@@ -37,7 +37,7 @@ src/
     setup.tsx          first-run wizard (PIN → children)
     kids.tsx           child profile picker
     kid/[childId]/     index (Today), shop, progress
-    parent-unlock.tsx  PIN pad
+    parent-unlock.tsx  PIN pad (+ forgot-PIN recovery)
     parent/            _layout (guard), index (hub/dashboard), inbox, tasks, task-edit,
                        rewards, reward-edit, children, child-edit, child/[childId],
                        settings (math gate), change-pin
@@ -46,9 +46,11 @@ src/
   domain/              pure logic + catalogs (task/reward templates, badges, avatars)
   services/            repositories (DB-backed use cases)
   state/               Zustand stores
-  hooks/               useQuery, useToday, useLayout, useFeedback …
-  theme/               tokens: colors, spacing, radii, typography
-__tests__/             (co-located as *.test.ts(x) next to sources)
+  hooks/               useQuery, useLayout
+  platform/            speech, sound, haptics, notifications, share (device APIs)
+  theme/               tokens: colors, spacing, radii, typography; fonts
+test-utils/            node:sqlite Db + fixtures (tests are co-located as *.test.ts(x))
+scripts/               sound + icon generators, web smoke test
 ```
 
 ## Data schema (SQLite, migration v1)
@@ -81,10 +83,13 @@ chart, adjust stars), Settings (math gate: toggles, reminders, change PIN, expor
 
 ## Milestones
 
-- (a) Scaffold, design system, navigation skeleton
-- (b) DB, migrations, ledger, domain logic + unit tests
-- (c) Parent flows
-- (d) Child flows
-- (e) Badges, streaks, sound, voice, animation
-- (f) Tablet layout polish + accessibility pass
-- (g) EAS config + docs (README, BUILD, PRIVACY)
+All milestones are complete (see PROJECT-STATUS.md).
+
+- [x] (a) Scaffold, design system, navigation skeleton
+- [x] (b) DB, migrations, ledger, domain logic + unit tests
+- [x] (c) Parent flows
+- [x] (d) Child flows
+- [x] (e) Badges, streaks, sound, voice, animation
+- [x] (f) Tablet layout polish + accessibility pass
+- [x] (g) EAS config + docs (README, BUILD, PRIVACY)
+- [x] Code-review pass and fixes; web smoke test in portrait + landscape

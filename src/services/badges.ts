@@ -2,7 +2,7 @@ import { newlyEarnedBadges } from '@/domain/badges';
 import type { DateKey } from '@/domain/dates';
 import type { Db, DbExecutor } from '@/db/types';
 
-import { badgeStats } from './stats';
+import { childStats } from './stats';
 
 export interface EarnedBadge {
   badgeId: string;
@@ -18,26 +18,30 @@ export async function listEarnedBadges(db: DbExecutor, childId: string): Promise
   return rows.map((r) => ({ badgeId: r.badge_id, earnedAt: r.earned_at, seen: r.seen === 1 }));
 }
 
-/** Awards any badges the child now qualifies for. Badges are permanent once earned. */
+/**
+ * Awards any badges the child now qualifies for and returns only the ones actually inserted
+ * by this call. Runs as one serialized transaction, so two simultaneous approvals can't both
+ * announce the same badge. Badges are permanent once earned.
+ */
 export async function evaluateBadges(
   db: Db,
   childId: string,
   today: DateKey,
   now = new Date(),
 ): Promise<string[]> {
-  const stats = await badgeStats(db, childId, today);
-  const have = (await listEarnedBadges(db, childId)).map((b) => b.badgeId);
-  const fresh = newlyEarnedBadges(stats, have);
-  if (fresh.length === 0) return [];
-  await db.transaction(async (tx) => {
-    for (const id of fresh) {
-      await tx.run(
+  return db.transaction(async (tx) => {
+    const { badges } = await childStats(tx, childId, today);
+    const have = (await listEarnedBadges(tx, childId)).map((b) => b.badgeId);
+    const awarded: string[] = [];
+    for (const id of newlyEarnedBadges(badges, have)) {
+      const r = await tx.run(
         'INSERT OR IGNORE INTO badges_earned (child_id, badge_id, earned_at, seen) VALUES (?, ?, ?, 0)',
         [childId, id, now.toISOString()],
       );
+      if (r.changes === 1) awarded.push(id);
     }
+    return awarded;
   });
-  return fresh;
 }
 
 export async function unseenBadges(db: DbExecutor, childId: string): Promise<string[]> {

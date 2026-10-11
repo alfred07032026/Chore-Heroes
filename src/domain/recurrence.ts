@@ -91,6 +91,25 @@ export function periodEnd(schedule: Schedule, date: DateKey): DateKey | null {
   }
 }
 
+/**
+ * Inclusive date range covered by the period containing `date`.
+ * Used to avoid offering a job again when it was already done in this period under a
+ * previous schedule (e.g. a parent switches a finished daily job to weekly).
+ */
+export function periodRange(schedule: Schedule, date: DateKey): { from: DateKey; to: DateKey } {
+  switch (schedule.type) {
+    case 'daily':
+    case 'weekdays':
+      return { from: date, to: date };
+    case 'weekly': {
+      const from = weekStart(date);
+      return { from, to: addDays(from, 6) };
+    }
+    case 'once':
+      return { from: schedule.startDate, to: '9999-12-31' };
+  }
+}
+
 export function describeSchedule(schedule: Schedule): string {
   const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   switch (schedule.type) {

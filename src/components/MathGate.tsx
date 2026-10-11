@@ -19,17 +19,19 @@ export function MathGate({
   rounds = 1,
   title = 'Grown-ups only',
   random = Math.random,
+  level = 'standard',
 }: {
   onPass: () => void;
   onCancel?: () => void;
   rounds?: number;
   title?: string;
   random?: () => number;
+  level?: 'standard' | 'hard';
 }) {
   const [round, setRound] = useState(0);
   const [nonce, setNonce] = useState(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const challenge = useMemo(() => makeMathChallenge(random), [round, nonce]);
+  const challenge = useMemo(() => makeMathChallenge(random, level), [round, nonce]);
   const [input, setInput] = useState('');
   const [wrong, setWrong] = useState(false);
 

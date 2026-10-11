@@ -53,9 +53,13 @@ export interface MathChallenge {
  * Parental-gate question: a two-digit × one-digit multiplication (e.g. 17 × 6).
  * Hard for a 6–9 year old to answer by guessing, trivial for an adult.
  */
-export function makeMathChallenge(random: () => number = Math.random): MathChallenge {
-  const a = 12 + Math.floor(random() * 8); // 12..19
-  const b = 3 + Math.floor(random() * 7); // 3..9
+export function makeMathChallenge(
+  random: () => number = Math.random,
+  level: 'standard' | 'hard' = 'standard',
+): MathChallenge {
+  // hard (PIN recovery): two-digit × two-digit, e.g. 27 × 14 — well beyond a 6–9 year old.
+  const a = level === 'hard' ? 13 + Math.floor(random() * 17) : 12 + Math.floor(random() * 8);
+  const b = level === 'hard' ? 12 + Math.floor(random() * 8) : 3 + Math.floor(random() * 7);
   return { prompt: `${a} × ${b} = ?`, spokenPrompt: `${a} times ${b}`, answer: a * b };
 }
 

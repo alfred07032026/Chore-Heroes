@@ -1,6 +1,6 @@
-import { addDays, type DateKey, toDateKey } from '@/domain/dates';
+import { addDays, type DateKey, toDateKey, weekStart } from '@/domain/dates';
 import { newId } from '@/domain/ids';
-import { duePeriods, isDueOn, periodKeyFor } from '@/domain/recurrence';
+import { duePeriods, isDueOn, periodKeyFor, periodRange } from '@/domain/recurrence';
 import type { TaskInstance } from '@/domain/types';
 import type { Db, DbExecutor } from '@/db/types';
 
@@ -27,8 +27,13 @@ async function activeAssignments(db: DbExecutor, childId?: string): Promise<Acti
 
 /**
  * Materializes one instance per (task, child, period) for every due period in [from, to].
- * Idempotent thanks to UNIQUE(task_id, child_id, period_key): re-running never duplicates,
- * and an instance that exists is never overwritten.
+ *
+ * - Idempotent: UNIQUE(task_id, child_id, period_key) means re-running never duplicates and
+ *   an existing instance is never overwritten.
+ * - Read-first: only opens a write transaction when something is actually missing, so the
+ *   common case (Today screen refresh) costs two reads.
+ * - Never re-offers a job already finished in the same period under an older schedule
+ *   (e.g. a finished daily job switched to weekly mid-week cannot be earned twice).
  */
 export async function ensureInstances(
   db: Db,
@@ -38,29 +43,60 @@ export async function ensureInstances(
 ): Promise<number> {
   const rows = await activeAssignments(db, childId);
   if (rows.length === 0) return 0;
+
+  const existing = await db.all<{ task_id: string; child_id: string; period_key: string }>(
+    `SELECT task_id, child_id, period_key FROM task_instances
+     WHERE (due_date >= ? OR period_key = 'once') ${childId ? 'AND child_id = ?' : ''}`,
+    childId ? [addDays(range.from, -7), childId] : [addDays(range.from, -7)],
+  );
+  const have = new Set(existing.map((e) => `${e.task_id}|${e.child_id}|${e.period_key}`));
+
+  const missing: {
+    t: ActiveAssignment;
+    periodKey: string;
+    dueDate: DateKey;
+    from: DateKey;
+    to: DateKey;
+  }[] = [];
+  for (const t of rows) {
+    const schedule = scheduleOfRow(t);
+    for (const p of duePeriods(schedule, range.from, range.to)) {
+      if (have.has(`${t.id}|${t.child_id}|${p.periodKey}`)) continue;
+      const r = periodRange(schedule, p.dueDate);
+      missing.push({ t, periodKey: p.periodKey, dueDate: p.dueDate, from: r.from, to: r.to });
+    }
+  }
+  if (missing.length === 0) return 0;
+
   return db.transaction(async (tx) => {
     let created = 0;
-    for (const t of rows) {
-      const schedule = scheduleOfRow(t);
-      for (const p of duePeriods(schedule, range.from, range.to)) {
-        const r = await tx.run(
-          `INSERT OR IGNORE INTO task_instances
-             (id, task_id, child_id, period_key, due_date, title, icon, stars, status, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?)`,
-          [
-            newId('i_'),
-            t.id,
-            t.child_id,
-            p.periodKey,
-            p.dueDate,
-            t.title,
-            t.icon,
-            t.stars,
-            now.toISOString(),
-          ],
-        );
-        created += r.changes;
-      }
+    for (const m of missing) {
+      const r = await tx.run(
+        `INSERT OR IGNORE INTO task_instances
+           (id, task_id, child_id, period_key, due_date, title, icon, stars, status, created_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM task_instances
+           WHERE task_id = ? AND child_id = ? AND period_key != ? AND status != 'todo'
+             AND completed_date BETWEEN ? AND ?)`,
+        [
+          newId('i_'),
+          m.t.id,
+          m.t.child_id,
+          m.periodKey,
+          m.dueDate,
+          m.t.title,
+          m.t.icon,
+          m.t.stars,
+          now.toISOString(),
+          m.t.id,
+          m.t.child_id,
+          m.periodKey,
+          m.from,
+          m.to,
+        ],
+      );
+      created += r.changes;
     }
     return created;
   });
@@ -90,9 +126,9 @@ export async function getToday(
     `SELECT i.*, t.schedule_type, t.weekdays, t.start_date FROM task_instances i
      JOIN tasks t ON t.id = i.task_id
      JOIN task_assignments a ON a.task_id = t.id AND a.child_id = i.child_id
-     WHERE i.child_id = ? AND t.archived_at IS NULL
+     WHERE i.child_id = ? AND t.archived_at IS NULL AND i.period_key IN (?, ?, 'once')
      ORDER BY i.created_at, i.rowid`,
-    [childId],
+    [childId, today, `week:${weekStart(today)}`],
   );
   const board: TodayBoard = { todo: [], waiting: [], done: [] };
   for (const r of rows) {
@@ -175,7 +211,8 @@ export async function completeInstance(
   return result;
 }
 
-export type UndoResult = { kind: 'undone' } | { kind: 'not_allowed' } | { kind: 'stars_spent' };
+export type UndoResult =
+  { kind: 'undone' } | { kind: 'too_late' } | { kind: 'parent_checked' } | { kind: 'stars_spent' };
 
 /**
  * "Oops, not done yet": a child can undo their own check-off on the same day.
@@ -192,7 +229,7 @@ export async function undoInstance(
     const row = await tx.get<InstanceRow>('SELECT * FROM task_instances WHERE id = ?', [
       instanceId,
     ]);
-    if (!row || row.completed_date !== today) return { kind: 'not_allowed' };
+    if (!row || row.completed_date !== today) return { kind: 'too_late' };
     if (row.status === 'waiting') {
       await tx.run(
         `UPDATE task_instances SET status = 'todo', completed_at = NULL, completed_date = NULL
@@ -202,7 +239,7 @@ export async function undoInstance(
       return { kind: 'undone' };
     }
     const autoApproved = row.status === 'done' && row.decided_at === row.completed_at;
-    if (!autoApproved) return { kind: 'not_allowed' };
+    if (!autoApproved) return { kind: 'parent_checked' };
     if ((await getBalance(tx, row.child_id)) < row.stars) return { kind: 'stars_spent' };
     await tx.run(
       `UPDATE task_instances SET status = 'todo', completed_at = NULL, completed_date = NULL, decided_at = NULL

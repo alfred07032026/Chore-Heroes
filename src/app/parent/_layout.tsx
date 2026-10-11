@@ -7,7 +7,8 @@ import { colors } from '@/theme/tokens';
 
 /** Everything under /parent requires an unlocked parent session (PIN), which auto-expires. */
 export default function ParentLayout() {
-  const unlockedAt = useAppStore((s) => s.parentUnlockedAt);
+  // Re-evaluated on every store change (touches update parentLastActive), not just on a timer.
+  const valid = useAppStore((s) => isParentSessionValid(s));
   const touch = useAppStore((s) => s.touchParent);
   const reduceMotion = useAppStore((s) => s.settings.reduceMotion);
 
@@ -18,11 +19,11 @@ export default function ParentLayout() {
         s.lockParent();
         router.dismissTo('/kids');
       }
-    }, 15_000);
+    }, 5_000);
     return () => clearInterval(id);
   }, []);
 
-  if (!unlockedAt) return <Redirect href="/parent-unlock" />;
+  if (!valid) return <Redirect href="/parent-unlock" />;
 
   return (
     <View

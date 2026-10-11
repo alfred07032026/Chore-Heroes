@@ -23,11 +23,17 @@ export async function getStreak(
   return computeStreak(await activeDays(db, childId), today);
 }
 
-export async function badgeStats(
+/**
+ * Badge stats and streak in one pass.
+ * "Perfect day" = a day with ≥2 date-scheduled jobs, every one of them approved/done
+ * (jobs still waiting for a parent don't count yet, so a later "not yet" can't leave a
+ * badge behind for a day that wasn't perfect).
+ */
+export async function childStats(
   db: DbExecutor,
   childId: string,
   today: DateKey,
-): Promise<BadgeStats> {
+): Promise<{ badges: BadgeStats; streak: StreakInfo }> {
   const streak = await getStreak(db, childId, today);
   const row = await db.get<{
     tasks: number;
@@ -44,16 +50,19 @@ export async function badgeStats(
           SELECT due_date FROM task_instances
           WHERE child_id = ?1 AND period_key = due_date
           GROUP BY due_date
-          HAVING COUNT(*) >= 2 AND SUM(status = 'todo') = 0)) AS perfect`,
+          HAVING COUNT(*) >= 2 AND SUM(status != 'done') = 0)) AS perfect`,
     [childId],
   );
   return {
-    tasksDone: row?.tasks ?? 0,
-    lifetimeStars: Math.max(0, row?.stars ?? 0),
-    rewardsRedeemed: row?.rewards ?? 0,
-    perfectDays: row?.perfect ?? 0,
-    currentStreak: streak.current,
-    bestStreak: streak.best,
+    streak,
+    badges: {
+      tasksDone: row?.tasks ?? 0,
+      lifetimeStars: Math.max(0, row?.stars ?? 0),
+      rewardsRedeemed: row?.rewards ?? 0,
+      perfectDays: row?.perfect ?? 0,
+      currentStreak: streak.current,
+      bestStreak: streak.best,
+    },
   };
 }
 
@@ -91,7 +100,7 @@ export async function getChildDashboard(
      WHERE child_id = ? AND due_date BETWEEN ? AND ?`,
     [childId, start, today],
   );
-  const stats = await badgeStats(db, childId, today);
+  const { badges: stats, streak } = await childStats(db, childId, today);
   return {
     balance: await getBalance(db, childId),
     starsThisWeek: week.reduce((s, d) => s + d.stars, 0),
@@ -99,7 +108,7 @@ export async function getChildDashboard(
     dueThisWeek: counts?.due ?? 0,
     doneThisWeek: counts?.done ?? 0,
     completionRate: completionRate(counts?.done ?? 0, counts?.due ?? 0),
-    streak: await getStreak(db, childId, today),
+    streak,
     tasksDone: stats.tasksDone,
     lifetimeStars: stats.lifetimeStars,
   };

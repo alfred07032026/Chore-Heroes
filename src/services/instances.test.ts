@@ -118,7 +118,7 @@ describe('task instances & check-off', () => {
     expect((await getToday(db, child.id, '2026-10-11', now)).todo).toHaveLength(1);
     // Undo is not allowed on another day
     await completeInstance(db, id, now);
-    expect(await undoInstance(db, id, at(2026, 10, 12))).toEqual({ kind: 'not_allowed' });
+    expect(await undoInstance(db, id, at(2026, 10, 12))).toEqual({ kind: 'too_late' });
   });
 
   it('editing a task never rewrites completed history', async () => {
@@ -174,5 +174,47 @@ describe('task instances & check-off', () => {
     ]);
     expect(results.filter((r) => r.kind === 'done')).toHaveLength(1);
     expect(await getBalance(db, child.id)).toBe(3);
+  });
+});
+
+describe('schedule changes', () => {
+  it('switching a finished daily job to weekly the same day does not let it be earned again', async () => {
+    const db = await createMigratedDb();
+    const child = await addChild(db);
+    const task = await addTask(db, [child.id]);
+    const now = at(2026, 10, 7, 9); // Wednesday
+    const id = (await getToday(db, child.id, '2026-10-07', now)).todo[0]!.id;
+    await completeInstance(db, id, now);
+    await updateTask(db, task.id, { ...task, scheduleType: 'weekly' }, at(2026, 10, 7, 10));
+    const sameDay = await getToday(db, child.id, '2026-10-07', at(2026, 10, 7, 11));
+    expect(sameDay.todo).toHaveLength(0);
+    // Later in the same week: still done for this week
+    expect((await getToday(db, child.id, '2026-10-09', at(2026, 10, 9))).todo).toHaveLength(0);
+    // Next week it's back
+    expect((await getToday(db, child.id, '2026-10-12', at(2026, 10, 12))).todo).toHaveLength(1);
+    expect(await getBalance(db, child.id)).toBe(3);
+  });
+
+  it('a schedule change applies from today (start date moves forward)', async () => {
+    const db = await createMigratedDb();
+    const child = await addChild(db);
+    const task = await addTask(db, [child.id]);
+    const updated = await updateTask(
+      db,
+      task.id,
+      { ...task, scheduleType: 'once' },
+      at(2026, 10, 7),
+    );
+    expect(updated.startDate).toBe('2026-10-07');
+  });
+
+  it('switching weekly to daily mid-week offers the daily job on later days', async () => {
+    const db = await createMigratedDb();
+    const child = await addChild(db);
+    const task = await addTask(db, [child.id], { scheduleType: 'weekly' });
+    const mon = await getToday(db, child.id, '2026-10-05', at(2026, 10, 5));
+    await completeInstance(db, mon.todo[0]!.id, at(2026, 10, 5));
+    await updateTask(db, task.id, { ...task, scheduleType: 'daily' }, at(2026, 10, 7));
+    expect((await getToday(db, child.id, '2026-10-07', at(2026, 10, 7))).todo).toHaveLength(1);
   });
 });

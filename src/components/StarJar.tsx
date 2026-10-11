@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { View } from 'react-native';
 import Animated, {
   useAnimatedProps,
@@ -60,6 +60,8 @@ export function StarJar({
   showNumber?: boolean;
 }) {
   const reduce = useReduceMotion();
+  // SVG ids are document-global on web; several jars can be mounted at once (navigation stack).
+  const clipId = `jarClip${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const fraction = goal > 0 ? Math.max(0, Math.min(1, balance / goal)) : 0;
   const level = useSharedValue(0);
   useEffect(() => {
@@ -68,7 +70,8 @@ export function StarJar({
       : withSpring(fraction, { damping: 14, stiffness: 90 });
   }, [fraction, reduce, level]);
   const fillProps = useAnimatedProps(() => {
-    const h = (JAR_BOTTOM - JAR_TOP) * level.value;
+    // Springs overshoot; keep the fill inside the jar (and never a negative SVG height).
+    const h = (JAR_BOTTOM - JAR_TOP) * Math.min(1, Math.max(0, level.value));
     return { y: JAR_BOTTOM - h, height: h };
   });
   const height = size * 1.15;
@@ -80,12 +83,12 @@ export function StarJar({
     >
       <Svg width={size} height={height} viewBox="0 0 100 115">
         <Defs>
-          <ClipPath id="jarClip">
+          <ClipPath id={clipId}>
             <Path d={JAR} />
           </ClipPath>
         </Defs>
         <Path d={JAR} fill="#EAF4FF" />
-        <G clipPath="url(#jarClip)">
+        <G clipPath={`url(#${clipId})`}>
           <AnimatedRect x={0} width={100} fill={colors.star} animatedProps={fillProps} />
           {SPARKS.map(([x, y, r], i) => (
             <Polygon

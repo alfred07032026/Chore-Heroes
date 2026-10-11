@@ -1,6 +1,6 @@
 import { addChild, addTask, at } from '../../test-utils/fixtures';
 import { createMigratedDb } from '../../test-utils/nodeDb';
-import { listEarnedBadges, markBadgesSeen, unseenBadges } from './badges';
+import { evaluateBadges, listEarnedBadges, markBadgesSeen, unseenBadges } from './badges';
 import { backfillAll, completeInstance, getToday } from './instances';
 import { getChildDashboard } from './stats';
 
@@ -53,5 +53,34 @@ describe('dashboard, streaks and badges', () => {
     expect((await unseenBadges(db, child.id)).length).toBe(earned.length);
     await markBadgesSeen(db, child.id, ['first_task']);
     expect(await unseenBadges(db, child.id)).not.toContain('first_task');
+  });
+});
+
+describe('badge edge cases', () => {
+  it('does not announce the same badge twice when evaluations race', async () => {
+    const db = await createMigratedDb();
+    const child = await addChild(db);
+    await addTask(db, [child.id]);
+    await doDay(db, child.id, 1);
+    await db.run('DELETE FROM badges_earned');
+    const [a, b] = await Promise.all([
+      evaluateBadges(db, child.id, '2026-10-01', at(2026, 10, 1)),
+      evaluateBadges(db, child.id, '2026-10-01', at(2026, 10, 1)),
+    ]);
+    expect([...a, ...b].filter((x) => x === 'first_task')).toHaveLength(1);
+  });
+
+  it('jobs still waiting for a parent do not make a perfect day', async () => {
+    const db = await createMigratedDb();
+    const child = await addChild(db);
+    await addTask(db, [child.id], { needsApproval: true });
+    await addTask(db, [child.id], { title: 'Make bed', needsApproval: true });
+    await addTask(db, [child.id], { title: 'Water', stars: 1 });
+    const results = await doDay(db, child.id, 2);
+    const badges = results.flatMap((r) => (r.kind === 'done' ? r.newBadges : []));
+    expect(badges).not.toContain('perfect_day');
+    expect((await listEarnedBadges(db, child.id)).map((b) => b.badgeId)).not.toContain(
+      'perfect_day',
+    );
   });
 });

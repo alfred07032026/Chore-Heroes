@@ -109,10 +109,16 @@ export async function updateTask(
   input: TaskInput,
   now = new Date(),
 ): Promise<Task> {
-  const t = clean(input);
+  const cleaned = clean(input);
   return db.transaction(async (tx) => {
     const before = await tx.get<TaskRow>('SELECT * FROM tasks WHERE id = ?', [id]);
     if (!before) throw new DomainError('not_found', 'Task not found.');
+    const today = toDateKey(now);
+    // A changed schedule applies from today: it never re-opens periods that already passed.
+    const t =
+      before.schedule_type !== cleaned.scheduleType && cleaned.startDate < today
+        ? { ...cleaned, startDate: today }
+        : cleaned;
     await tx.run(
       `UPDATE tasks SET title = ?, icon = ?, stars = ?, schedule_type = ?, weekdays = ?, start_date = ?,
          needs_approval = ?, updated_at = ? WHERE id = ?`,
@@ -129,7 +135,7 @@ export async function updateTask(
       ],
     );
     await setAssignments(tx, id, t.childIds);
-    await dropOpenInstances(tx, id, scheduleOfRow(before), toDateKey(now));
+    await dropOpenInstances(tx, id, scheduleOfRow(before), today);
     return (await getTask(tx, id))!;
   });
 }

@@ -207,7 +207,13 @@ function TaskForm({
         label="How often"
         options={SCHEDULES}
         value={input.scheduleType}
-        onChange={(v) => set('scheduleType', v)}
+        onChange={(v) =>
+          setInput((p) => ({
+            ...p,
+            scheduleType: v,
+            startDate: v === 'once' ? today : p.startDate,
+          }))
+        }
       />
       {input.scheduleType === 'weekdays' ? (
         <View style={{ marginBottom: space.md }}>

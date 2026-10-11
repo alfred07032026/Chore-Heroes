@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { createMutex, type Db, type DbExecutor, type SqlParams } from './types';
 
@@ -28,29 +28,38 @@ function executor(conn: Native): DbExecutor {
 
 export const DB_NAME = 'chore-heroes.db';
 
+/**
+ * Single-connection database with serialized writes.
+ *
+ * Every write — standalone `run`/`exec` or a whole `transaction` — goes through one JS mutex
+ * on one connection, so writers can never collide (no SQLITE_BUSY between our own
+ * connections) and a standalone write can never land inside someone else's open transaction.
+ * Reads are not queued; on the same connection they simply see the latest state.
+ */
 export async function openExpoDb(name = DB_NAME): Promise<Db> {
   const conn = await SQLite.openDatabaseAsync(name);
   if (Platform.OS !== 'web') await conn.execAsync('PRAGMA journal_mode = WAL');
   await conn.execAsync('PRAGMA foreign_keys = ON');
-  const base = executor(conn);
+  await conn.execAsync('PRAGMA busy_timeout = 5000');
+  const raw = executor(conn);
   const lock = createMutex();
 
   return {
-    ...base,
+    all: raw.all,
+    get: raw.get,
+    run: (sql, params) => lock(() => raw.run(sql, params)),
+    exec: (sql) => lock(() => raw.exec(sql)),
     transaction<T>(fn: (tx: DbExecutor) => Promise<T>): Promise<T> {
       return lock(async () => {
-        let result: T | undefined;
-        if (Platform.OS === 'web') {
-          // Exclusive transactions are not available on web; the mutex still serializes writers.
-          await conn.withTransactionAsync(async () => {
-            result = await fn(base);
-          });
-        } else {
-          await conn.withExclusiveTransactionAsync(async (txn) => {
-            result = await fn(executor(txn));
-          });
+        await conn.execAsync('BEGIN IMMEDIATE');
+        try {
+          const result = await fn(raw);
+          await conn.execAsync('COMMIT');
+          return result;
+        } catch (e) {
+          await conn.execAsync('ROLLBACK').catch(() => undefined);
+          throw e;
         }
-        return result as T;
       });
     },
   };

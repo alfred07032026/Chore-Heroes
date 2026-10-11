@@ -66,13 +66,16 @@ export default function ParentUnlock() {
             disabled={lockedMs > 0}
             onComplete={(p) => void enter(p)}
           />
-          <Button label="Forgot PIN?" tone="ghost" onPress={() => setMode('forgot')} />
+          {lockedMs <= 0 ? (
+            <Button label="Forgot PIN?" tone="ghost" onPress={() => setMode('forgot')} />
+          ) : null}
         </View>
       ) : null}
       {mode === 'forgot' ? (
         <Card>
           <MathGate
             rounds={3}
+            level="hard"
             title="Reset your PIN"
             onCancel={() => setMode('enter')}
             onPass={() => {

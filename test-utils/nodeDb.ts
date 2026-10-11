@@ -1,13 +1,16 @@
 import { DatabaseSync } from 'node:sqlite';
 
-import { createMutex, type Db, type DbExecutor, type SqlParams } from '../src/db/types';
 import { migrate } from '../src/db/migrations';
+import { createMutex, type Db, type DbExecutor, type SqlParams } from '../src/db/types';
 
-/** In-memory SQLite (Node's built-in driver) implementing the app's Db interface. */
+/**
+ * In-memory SQLite (Node's built-in driver) implementing the app's Db interface with the same
+ * semantics as the device adapter: one connection, writes and transactions serialized.
+ */
 export function createNodeDb(): Db {
   const conn = new DatabaseSync(':memory:');
   conn.exec('PRAGMA foreign_keys = ON');
-  const exec: DbExecutor = {
+  const raw: DbExecutor = {
     async run(sql, params: SqlParams = []) {
       const r = conn.prepare(sql).run(...(params as (string | number | null)[]));
       return { changes: Number(r.changes) };
@@ -25,12 +28,15 @@ export function createNodeDb(): Db {
   };
   const lock = createMutex();
   return {
-    ...exec,
+    all: raw.all,
+    get: raw.get,
+    run: (sql, params) => lock(() => raw.run(sql, params)),
+    exec: (sql) => lock(() => raw.exec(sql)),
     transaction<T>(fn: (tx: DbExecutor) => Promise<T>) {
       return lock(async () => {
         conn.exec('BEGIN IMMEDIATE');
         try {
-          const result = await fn(exec);
+          const result = await fn(raw);
           conn.exec('COMMIT');
           return result;
         } catch (e) {
