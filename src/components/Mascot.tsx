@@ -55,7 +55,7 @@ export function Mascot({
         withTiming(-size * 0.04, { duration: 900, easing: Easing.inOut(Easing.quad) }),
         withTiming(0, { duration: 900, easing: Easing.inOut(Easing.quad) }),
       ),
-      -1,
+      3, // a short greeting bob, then still: no endless decorative motion
     );
     return () => cancelAnimation(y);
   }, [reduce, animate, size, y]);
@@ -64,8 +64,9 @@ export function Mascot({
   return (
     <Animated.View
       style={[{ width: size, height: size }, style]}
-      accessible
-      accessibilityLabel="Sparky the star hero"
+      // Decorative: the message next to Sparky carries the meaning, so screen readers skip him.
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
     >
       <Svg width={size} height={size} viewBox="0 0 100 100">
         {/* cape */}

@@ -13,9 +13,9 @@ export const colors = {
   heroDark: '#3F2A8C',
   heroLight: '#E7E0FF',
   star: '#FFC531',
-  starDeep: '#B07800', // star-colored text on light bg (4.6:1)
+  starDeep: '#9A6700', // star outlines/text on light bg (≥4.1:1 on every light surface)
   starLight: '#FFF1C7',
-  success: '#2B8A3E', // 4.6:1 white text
+  success: '#257A36', // 5.4:1 white text; 4.7:1 as icon on successLight
   successLight: '#DDF5E3',
   danger: '#C92A2A', // 5.6:1 white text
   dangerLight: '#FFE3E3',
@@ -26,7 +26,8 @@ export const colors = {
   waiting: '#5C7CFA',
   waitingLight: '#E5EBFF',
   border: '#E3DCCF',
-  locked: '#B9B3C9',
+  locked: '#B9B3C9', // decorative/disabled only — never behind meaningful icons
+  lockedStrong: '#6E6888', // locked badge circles: white lock icon 5.3:1
   white: '#FFFFFF',
   overlay: 'rgba(30, 26, 60, 0.55)',
 } as const;

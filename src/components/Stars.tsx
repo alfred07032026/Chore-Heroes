@@ -5,6 +5,25 @@ import { colors, radius, space } from '@/theme/tokens';
 import { Icon } from './Icon';
 import { Txt } from './Txt';
 
+/**
+ * A star that stays visible on light backgrounds: yellow fill plus a dark-gold outline
+ * (plain #FFC531 on white is only 1.6:1; the outline brings it to ≥4:1, WCAG 1.4.11).
+ */
+export function StarGlyph({ size = 24 }: { size?: number }) {
+  return (
+    <View
+      style={{ width: size, height: size }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Icon name="star" size={size} color={colors.star} />
+      <View style={{ position: 'absolute' }}>
+        <Icon name="star-outline" size={size} color={colors.starDeep} />
+      </View>
+    </View>
+  );
+}
+
 /** Star value shown as countable star icons (pre-readers can count them) plus the number. */
 export function StarRow({
   count,
@@ -23,7 +42,7 @@ export function StarRow({
       accessibilityLabel={`${count} ${count === 1 ? 'star' : 'stars'}`}
     >
       {Array.from({ length: shown }, (_, i) => (
-        <Icon key={i} name="star" size={size} color={colors.star} />
+        <StarGlyph key={i} size={size} />
       ))}
       {count > max ? (
         <Txt variant="label" color={colors.starDeep}>
@@ -61,7 +80,7 @@ export function StarPill({
         alignSelf: center ? 'center' : 'flex-start',
       }}
     >
-      <Icon name="star" size={big ? 30 : 20} color={colors.star} />
+      <StarGlyph size={big ? 30 : 20} />
       <Txt variant={big ? 'title' : 'label'} color={tone === 'light' ? colors.ink : colors.white}>
         {value}
       </Txt>

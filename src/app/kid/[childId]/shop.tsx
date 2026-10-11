@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { IconButton } from '@/components/Button';
@@ -9,9 +9,11 @@ import { RewardCard } from '@/components/ChildCards';
 import { Icon, IconBubble } from '@/components/Icon';
 import { Mascot, MascotSays } from '@/components/Mascot';
 import { EmptyState, Grid, TwoPane, useGridColumns } from '@/components/Misc';
+import { LoadingScreen } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { StarJar } from '@/components/StarJar';
+import { StarGlyph } from '@/components/Stars';
 import { TopBar } from '@/components/TopBar';
 import { Txt } from '@/components/Txt';
 import type { Redemption, Reward } from '@/domain/types';
@@ -33,6 +35,8 @@ export default function Shop() {
   const { twoPane } = useLayout();
   const columns = useGridColumns(240, 3, 300);
   const [phase, setPhase] = useState<Phase>(null);
+  // Ref, not state: two fast taps in the same render must not both send a request.
+  const asking = useRef(false);
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const [badge, setBadge] = useState<string | null>(null);
   const [news, setNews] = useState<Redemption[]>([]);
@@ -65,12 +69,16 @@ export default function Shop() {
   }, [childId]);
 
   const data = q.data;
-  if (!data?.child) return <Screen>{null}</Screen>;
+  if (!data?.child) return <LoadingScreen />;
   const { shop } = data;
   const goal = Math.max(...shop.items.map((i) => i.reward.cost), 20);
 
   const ask = async (reward: Reward) => {
-    const r = await mutate((db) => requestReward(db, childId, reward.id));
+    if (asking.current) return;
+    asking.current = true;
+    const r = await mutate((db) => requestReward(db, childId, reward.id)).finally(() => {
+      asking.current = false;
+    });
     if (r.kind === 'requested') {
       feedback({
         sound: 'coin',
@@ -200,7 +208,7 @@ export default function Shop() {
                   </Txt>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xxs }}>
-                  <Icon name="star" size={30} color={colors.star} />
+                  <StarGlyph size={30} />
                   <Txt variant="title">{phase.reward.cost}</Txt>
                 </View>
                 <View style={{ flexDirection: 'row', gap: space.lg }}>

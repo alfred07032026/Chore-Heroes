@@ -17,7 +17,7 @@ import { colors, space } from '@/theme/tokens';
 
 import { Button } from '../Button';
 import { Chip, Field, IconPicker, Stepper, ToggleRow } from '../Form';
-import { Icon } from '../Icon';
+import { StarGlyph } from '../Stars';
 import { Txt } from '../Txt';
 
 export function RewardEditor({
@@ -137,7 +137,7 @@ function RewardForm({
         onChange={(v) => set('cost', v)}
         render={(v) => (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Icon name="star" size={26} color={colors.star} />
+            <StarGlyph size={26} />
             <Txt variant="title">{v}</Txt>
           </View>
         )}

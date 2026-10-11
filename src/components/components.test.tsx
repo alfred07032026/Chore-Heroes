@@ -1,11 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import type { TaskInstance } from '@/domain/types';
 
 import { TaskCard } from './ChildCards';
 import { applyKey } from './Keypad';
+import { Mascot } from './Mascot';
 import { MathGate } from './MathGate';
 import { PinEntry } from './PinEntry';
+import { Toast } from './Toast';
 import { StarRow } from './Stars';
 
 const instance = (over: Partial<TaskInstance> = {}): TaskInstance => ({
@@ -117,5 +120,33 @@ describe('StarRow', () => {
     await render(<StarRow count={7} />);
     expect(screen.getByLabelText('7 stars')).toBeTruthy();
     expect(screen.getByText('+2')).toBeTruthy();
+  });
+});
+
+describe('screen reader support', () => {
+  it('job cards offer a "Hear it" accessibility action', async () => {
+    const onPress = jest.fn();
+    const onSpeak = jest.fn();
+    await render(<TaskCard instance={instance()} onPress={onPress} onSpeak={onSpeak} />);
+    const card = screen.getByLabelText('Feed the dog. 3 stars. Tap to check it off.');
+    expect(card.props.accessibilityActions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'speak', label: 'Hear it' })]),
+    );
+    await fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: 'speak' } });
+    expect(onSpeak).toHaveBeenCalled();
+    expect(onPress).not.toHaveBeenCalled();
+    await fireEvent(card, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('hides the decorative mascot from screen readers', async () => {
+    await render(<Mascot animate={false} />);
+    expect(screen.queryByLabelText(/Sparky/)).toBeNull();
+  });
+
+  it('announces toasts for VoiceOver', async () => {
+    const spy = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(<Toast message="Great job! A grown-up will check it." onHide={jest.fn()} />);
+    expect(spy).toHaveBeenCalledWith('Great job! A grown-up will check it.');
   });
 });

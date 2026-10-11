@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useEffectEvent, useMemo } from 'react';
+import { AccessibilityInfo, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -19,6 +19,7 @@ import { colors, radius, shadow, space } from '@/theme/tokens';
 import { Button } from './Button';
 import { Icon } from './Icon';
 import { Mascot } from './Mascot';
+import { StarGlyph } from './Stars';
 import { Txt } from './Txt';
 
 function Particle({
@@ -84,12 +85,30 @@ export function Celebration({
     [],
   );
   const pop = useSharedValue(1);
+  // Stable callback: parent re-renders must not restart the auto-close timer.
+  const finish = useEffectEvent(() => onDone());
   useEffect(() => {
     if (!visible) return;
     if (!reduce) pop.value = withSequence(withSpring(1.25), withSpring(1));
-    const id = setTimeout(onDone, durationMs);
-    return () => clearTimeout(id);
-  }, [visible, durationMs, onDone, reduce, pop]);
+    AccessibilityInfo.announceForAccessibility(
+      stars > 0 ? `${message} Plus ${stars} ${stars === 1 ? 'star' : 'stars'}.` : message,
+    );
+    // Screen-reader users get more time before it closes on its own.
+    let id: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    // react-native-web always reports a screen reader, so only trust this on devices.
+    const srCheck =
+      Platform.OS === 'web' ? Promise.resolve(false) : AccessibilityInfo.isScreenReaderEnabled();
+    void srCheck
+      .catch(() => false)
+      .then((sr) => {
+        if (!cancelled) id = setTimeout(finish, sr ? Math.max(durationMs, 7000) : durationMs);
+      });
+    return () => {
+      cancelled = true;
+      if (id) clearTimeout(id);
+    };
+  }, [visible, durationMs, reduce, pop, stars, message]);
   const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
 
   if (!visible) return null;
@@ -114,7 +133,7 @@ export function Celebration({
             <Animated.View style={[styles.plus, shadow.raised, popStyle]}>
               {stars > 0 ? (
                 <>
-                  <Icon name="star" size={44} color={colors.star} />
+                  <StarGlyph size={44} />
                   <Txt variant="hero" color={colors.ink} maxFontSizeMultiplier={1.1}>
                     +{stars}
                   </Txt>

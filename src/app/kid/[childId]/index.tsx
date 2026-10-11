@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -11,6 +11,7 @@ import { Flame } from '@/components/Flame';
 import { MascotSays } from '@/components/Mascot';
 import { EmptyState, Grid, TwoPane, useGridColumns } from '@/components/Misc';
 import { Pressy } from '@/components/Pressy';
+import { LoadingScreen } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { StarJar } from '@/components/StarJar';
@@ -51,6 +52,7 @@ export default function Today() {
   const [toast, setToast] = useState<string | null>(null);
   const [undoTarget, setUndoTarget] = useState<TaskInstance | null>(null);
   const [busy, setBusy] = useState(false);
+  const undoing = useRef(false);
 
   const q = useQuery(
     async (db) => {
@@ -140,8 +142,11 @@ export default function Today() {
   );
 
   const doUndo = async () => {
-    if (!undoTarget) return;
-    const r = await mutate((db) => undoInstance(db, undoTarget.id));
+    if (!undoTarget || undoing.current) return;
+    undoing.current = true;
+    const r = await mutate((db) => undoInstance(db, undoTarget.id)).finally(() => {
+      undoing.current = false;
+    });
     setUndoTarget(null);
     if (r.kind === 'undone') feedback({ sound: 'gentle', say: 'Okay! It is back on your list.' });
     else if (r.kind === 'stars_spent') setToast('Those stars were already spent. Ask a grown-up.');
@@ -173,7 +178,7 @@ export default function Today() {
       </Screen>
     );
   }
-  if (!data || !child) return <Screen>{null}</Screen>;
+  if (!data || !child) return <LoadingScreen />;
 
   const goShop = () => {
     feedback({ sound: 'tap', say: 'Rewards!' });

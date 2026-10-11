@@ -9,7 +9,7 @@ import { colors, radius, shadow, space, touch } from '@/theme/tokens';
 import { Button, IconButton } from './Button';
 import { Icon, IconBubble } from './Icon';
 import { Pressy } from './Pressy';
-import { StarRow } from './Stars';
+import { StarGlyph, StarRow } from './Stars';
 import { Txt } from './Txt';
 
 export function spokenTask(i: Pick<TaskInstance, 'title' | 'stars'>): string {
@@ -50,6 +50,10 @@ export function TaskCard({
         onPress={onPress}
         accessibilityLabel={a11y}
         accessibilityState={{ checked: done }}
+        accessibilityActions={[{ name: 'activate' }, { name: 'speak', label: 'Hear it' }]}
+        onAccessibilityAction={(e) =>
+          e.nativeEvent.actionName === 'speak' ? onSpeak() : onPress()
+        }
         style={[
           styles.card,
           { flex: 1 },
@@ -99,7 +103,7 @@ export function TaskCard({
         {instance.returned && status === 'todo' ? (
           <View style={styles.note}>
             <Icon name="replay" size={22} color={colors.flame} />
-            <Txt variant="caption" weight="bold" style={{ flexShrink: 1 }}>
+            <Txt variant="body" weight="bold" style={{ flexShrink: 1 }}>
               {instance.parentNote ?? 'Try again!'}
             </Txt>
           </View>
@@ -107,7 +111,7 @@ export function TaskCard({
         {done && instance.parentNote ? (
           <View style={[styles.note, { backgroundColor: colors.white }]}>
             <Icon name="heart" size={22} color={colors.danger} />
-            <Txt variant="caption" weight="bold" style={{ flexShrink: 1 }}>
+            <Txt variant="body" weight="bold" style={{ flexShrink: 1 }}>
               {instance.parentNote}
             </Txt>
           </View>
@@ -163,13 +167,13 @@ export function RewardCard({
         accessible
         accessibilityLabel={`Costs ${reward.cost} stars`}
       >
-        <Icon name="star" size={30} color={colors.star} />
+        <StarGlyph size={30} />
         <Txt variant="title">{reward.cost}</Txt>
       </View>
       {pending ? (
         <View style={[styles.note, { backgroundColor: colors.waitingLight }]}>
           <Icon name="clock-outline" size={24} color={colors.waiting} />
-          <Txt variant="caption" weight="bold">
+          <Txt variant="body" weight="bold">
             Waiting for a grown-up
           </Txt>
         </View>
@@ -177,7 +181,7 @@ export function RewardCard({
       {limitReached ? (
         <View style={[styles.note, { backgroundColor: colors.skyLight }]}>
           <Icon name="calendar-refresh" size={24} color={colors.sky} />
-          <Txt variant="caption" weight="bold">
+          <Txt variant="body" weight="bold">
             All used up this week. Back next week!
           </Txt>
         </View>
@@ -199,7 +203,7 @@ export function RewardCard({
           <View style={styles.track}>
             <View style={[styles.fill, { width: `${Math.round(progress * 100)}%` }]} />
           </View>
-          <Txt variant="caption" weight="bold" color={colors.inkSoft}>
+          <Txt variant="body" weight="bold" color={colors.inkSoft}>
             {missing} more ★ to go
           </Txt>
         </View>
@@ -243,5 +247,5 @@ const styles = StyleSheet.create({
     padding: space.xs,
   },
   track: { height: 14, borderRadius: 7, backgroundColor: colors.border, overflow: 'hidden' },
-  fill: { height: 14, borderRadius: 7, backgroundColor: colors.star },
+  fill: { height: 14, borderRadius: 7, backgroundColor: colors.starDeep }, // 3.6:1 vs track
 });

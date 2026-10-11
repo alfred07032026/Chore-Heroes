@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 
 import { useReduceMotion } from '@/state/appStore';
@@ -23,6 +23,8 @@ export function Toast({
   const reduce = useReduceMotion();
   useEffect(() => {
     if (!message) return;
+    // accessibilityLiveRegion only works on Android; announce explicitly for VoiceOver too.
+    AccessibilityInfo.announceForAccessibility(message);
     const id = setTimeout(onHide, ms);
     return () => clearTimeout(id);
   }, [message, ms, onHide]);
