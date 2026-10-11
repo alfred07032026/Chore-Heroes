@@ -42,3 +42,6 @@ yarn-error.*
 
 # test
 coverage/
+
+# Python bytecode (ui-ux-pro-max skill scripts)
+__pycache__/
