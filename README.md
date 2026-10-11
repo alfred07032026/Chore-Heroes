@@ -1,1 +1,106 @@
-# Chore-Heroes
+# Chore Heroes ⭐
+
+A tablet-first chore chart for children aged 6–9. A parent assigns jobs, kids check them off to
+earn stars, and stars are traded for rewards the parent chooses. Built for iPad (portrait and
+landscape) and Android from one Expo / React Native codebase.
+
+- **Made for pre-readers:** icons, colors, a friendly mascot ("Sparky") and read-aloud for every
+  label. 64pt+ touch targets, one main action per screen.
+- **Private by design:** no accounts, no ads, no analytics, no network — all data stays on the
+  device (see [PRIVACY.md](PRIVACY.md)).
+- **Trustworthy stars:** an append-only ledger (enforced by SQLite triggers); balances are always
+  computed, never stored.
+
+## Features
+
+**Grown-ups** (4-digit PIN, auto-locks; settings & export also need a math gate)
+
+- First-run setup: PIN, 1–6 children (name, avatar, color, age 6–9), optional starter pack
+- Jobs: create/edit/archive, icon, 1–5 stars, assign to children, one-time / daily /
+  specific weekdays / weekly, optional "needs my approval"; 26 templates
+- Rewards: create/edit/archive, icon, star cost, optional per-week limit, optional approval;
+  14 templates
+- Approvals inbox: approve or send back jobs, approve/decline rewards, one-tap "Nice job!" notes
+- Per-child dashboard: balance, stars this week, completion rate, streak, weekly bar chart,
+  star history, manual adjustment with a required reason
+- Settings: sound, read-aloud, reduce motion, dyslexia-friendly font (OpenDyslexic), local
+  daily reminder, change PIN, JSON export via the share sheet, erase all data
+
+**Kids** (no reading required)
+
+- Hero picker with big avatars
+- Today board: big job cards (icon, star count, speaker button); tap to check off → celebration,
+  sound and haptic; "waiting for a grown-up" (clock) for approval jobs; Done row; same-day undo
+- Star jar that fills toward the next reward → rewards shop with "ask a grown-up" confirmation
+- Streak flame (gentle reset, never shaming) and 10 collectible badges with unlock animations
+
+## Run it
+
+Requirements: Node.js 22+, npm.
+
+```bash
+npm ci
+npm start            # Expo dev server — open in Expo Go (SDK 57) or a development build
+npm run web          # quick look in a browser (smoke testing only; the product is iPad/Android)
+```
+
+Quality checks (run before every commit):
+
+```bash
+npm run verify       # = npm run typecheck && npm run lint && npm test
+npm run format       # Prettier
+```
+
+Building installable apps (Android APK, iPad via TestFlight): see **[BUILD.md](BUILD.md)**.
+
+### Web smoke test (optional)
+
+```bash
+npx expo export --platform web --output-dir dist
+node scripts/smoke/serve.js "$PWD/dist" 8089 &
+node scripts/smoke/flow.js /tmp/shots 820 1180 portrait     # needs Playwright installed
+node scripts/smoke/flow.js /tmp/shots 1180 820 landscape
+```
+
+Walks setup → kid flow → parent flow, saves screenshots and prints any console errors.
+
+## Project layout
+
+```
+src/
+  app/           expo-router screens (setup, kids, kid/[childId]/{index,shop,progress},
+                 parent-unlock, parent/*)
+  components/    design system (Txt, Button, Card, Sheet, Keypad, Mascot, StarJar, Flame,
+                 Celebration, BarChart…) and feature components (ChildCards, parent/*)
+  db/            Db interface, expo-sqlite adapter, migrations
+  domain/        pure logic: dates, recurrence, streaks, badges, rules, security, catalogs
+  services/      repositories: children, tasks, instances, rewards, approvals, ledger,
+                 stats, badges, settings, backup
+  platform/      speech, sound, haptics, notifications, share
+  state/         Zustand app store (settings, session, data version)
+  theme/         design tokens and fonts
+test-utils/      node:sqlite test database + fixtures
+scripts/         sound/icon generators, web smoke test
+```
+
+Key docs: [PLAN.md](PLAN.md) (architecture & schema) · [DECISIONS.md](DECISIONS.md) (every
+default and why) · [PROJECT-STATUS.md](PROJECT-STATUS.md) · [BUILD.md](BUILD.md) ·
+[PRIVACY.md](PRIVACY.md)
+
+## Data model in one paragraph
+
+Recurring jobs materialize one `task_instances` row per child per period (day, or week for
+weekly jobs) with a unique key, so history is preserved and a job can't be completed twice.
+Every star movement is a row in `stars_ledger` (`delta`, `reason`, `source_type`, `source_id`);
+UPDATE and DELETE on that table are blocked by triggers. Reward requests debit stars
+immediately and are refunded with a new row if declined, so balances can never go negative.
+Dates are stored as local calendar keys captured at the time of the event, so midnight and
+time-zone changes are handled predictably. Schema changes go through numbered, additive,
+transactional migrations.
+
+## Licenses of bundled assets
+
+- Nunito font — SIL Open Font License (via `@expo-google-fonts/nunito`)
+- OpenDyslexic font — see `assets/fonts/OpenDyslexic-LICENSE.txt`
+- Material Design Icons — Apache 2.0 / OFL (via `@expo/vector-icons`)
+- Sounds and app icon — generated by this project (`scripts/`)

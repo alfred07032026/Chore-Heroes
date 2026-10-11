@@ -68,7 +68,7 @@ export default function Kids() {
             testID={`kid-${k.name}`}
             accessibilityLabel={`${k.name}. ${q.data?.balances[k.id] ?? 0} stars`}
             onPress={() => {
-              feedback({ sound: 'tap', haptic: 'tap', say: `Hi ${k.name}!` });
+              feedback({ sound: 'tap', haptic: 'tap' });
               router.push({ pathname: '/kid/[childId]', params: { childId: k.id } });
             }}
             style={[

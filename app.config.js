@@ -1,10 +1,11 @@
 // Dynamic layer over app.json.
-// Release builds (preview / production) block Android's network permissions entirely,
-// so the shipped app physically cannot make network requests. Development builds keep
-// them because the dev client must talk to the Metro bundler.
+// Release builds (EAS "preview" and "production" profiles) block Android's network
+// permissions entirely, so the shipped app physically cannot make network requests.
+// Development builds and local `expo run` keep them: the dev client must reach Metro.
+const RELEASE_VARIANTS = ['preview', 'production'];
+
 module.exports = ({ config }) => {
-  const isDevBuild = process.env.APP_VARIANT === 'development';
-  if (isDevBuild) {
+  if (!RELEASE_VARIANTS.includes(process.env.APP_VARIANT)) {
     return config;
   }
   return {

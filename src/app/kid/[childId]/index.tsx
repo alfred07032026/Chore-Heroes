@@ -290,6 +290,7 @@ export default function Today() {
   const main = (
     <View>
       <MascotSays
+        speakOnMount
         text={greeting}
         mood={data.board.todo.length === 0 && data.board.done.length > 0 ? 'cheer' : 'happy'}
       />

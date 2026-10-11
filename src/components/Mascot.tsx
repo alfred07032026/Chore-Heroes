@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -138,8 +138,14 @@ export function MascotSays({
   size?: number;
   speakOnMount?: boolean;
 }) {
+  // Speak the first message once when the screen opens (for pre-readers); later text
+  // changes are announced by the action that caused them, so don't repeat here.
+  const spoken = useRef(false);
   useEffect(() => {
-    if (speakOnMount) speak(text);
+    if (speakOnMount && text && !spoken.current) {
+      spoken.current = true;
+      speak(text);
+    }
   }, [speakOnMount, text]);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
