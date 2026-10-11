@@ -13,6 +13,7 @@ jest.mock('expo-haptics', () => ({
 }));
 
 // Reanimated/worklets need native code; use their official Jest mocks.
+/* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 jest.mock('expo-audio', () => ({
