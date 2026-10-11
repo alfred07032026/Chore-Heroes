@@ -10,6 +10,18 @@ module.exports = defineConfig([
     ignores: ['dist/*', 'web-build/*', '.expo/*', 'coverage/*', 'node_modules/*'],
   },
   {
+    files: ['scripts/**/*.js', '*.config.js'],
+    languageOptions: {
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        __dirname: 'readonly',
+        Buffer: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     rules: {
       'no-console': ['error', { allow: ['warn', 'error'] }],
     },
