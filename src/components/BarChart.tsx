@@ -35,7 +35,9 @@ export function BarChart({
                   maxWidth: 44,
                   height: h,
                   borderRadius: radius.sm,
-                  backgroundColor: d.value === 0 ? colors.border : isHi ? colors.hero : colors.star,
+                  // starDeep (4.9:1) rather than light yellow (1.6:1) so bars meet non-text contrast
+                  backgroundColor:
+                    d.value === 0 ? colors.border : isHi ? colors.hero : colors.starDeep,
                 }}
               />
             </View>

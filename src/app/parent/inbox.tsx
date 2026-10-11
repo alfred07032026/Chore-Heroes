@@ -8,6 +8,7 @@ import { Card } from '@/components/Card';
 import { Chip } from '@/components/Form';
 import { IconBubble } from '@/components/Icon';
 import { EmptyState, Grid, useGridColumns } from '@/components/Misc';
+import { LoadingScreen } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { StarPill } from '@/components/Stars';
 import { Toast } from '@/components/Toast';
@@ -105,6 +106,7 @@ function InboxCard({ item, onToast }: { item: InboxItem; onToast: (m: string) =>
           onPress={() => void decide(false)}
           disabled={busy}
           testID={`reject-${title}`}
+          accessibilityLabel={`${isTask ? 'Not yet' : 'Decline'}: ${title} for ${item.child.name}`}
         />
         <Button
           label="Approve"
@@ -113,6 +115,7 @@ function InboxCard({ item, onToast }: { item: InboxItem; onToast: (m: string) =>
           onPress={() => void decide(true)}
           busy={busy}
           testID={`approve-${title}`}
+          accessibilityLabel={`Approve: ${title} for ${item.child.name}`}
         />
       </View>
     </Card>
@@ -123,7 +126,8 @@ export default function Inbox() {
   const q = useQuery((db) => getInbox(db), []);
   const columns = useGridColumns(420, 2);
   const [toast, setToast] = useState<string | null>(null);
-  const items = q.data ?? [];
+  if (!q.data) return <LoadingScreen />;
+  const items = q.data;
   return (
     <View style={{ flex: 1 }}>
       <Screen

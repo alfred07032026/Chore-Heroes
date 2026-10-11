@@ -6,6 +6,7 @@ import { colors, space } from '@/theme/tokens';
 
 import { applyKey, Keypad, PinDots } from './Keypad';
 import { Txt } from './Txt';
+import { ErrorText } from './ErrorText';
 
 /** PIN pad that calls onComplete once 4 digits are entered, then clears itself. */
 export function PinEntry({
@@ -42,9 +43,9 @@ export function PinEntry({
       <PinDots length={PIN_LENGTH} filled={pin.length} error={!!error} />
       <View style={{ minHeight: 24 }}>
         {error ? (
-          <Txt variant="body" color={colors.danger} center accessibilityLiveRegion="assertive">
+          <ErrorText variant="body" center>
             {error}
-          </Txt>
+          </ErrorText>
         ) : null}
       </View>
       <Keypad onKey={onKey} disabled={disabled} />

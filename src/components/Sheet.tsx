@@ -1,5 +1,13 @@
 import { type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { useLayout } from '@/hooks/useLayout';
 import { useReduceMotion } from '@/state/appStore';
@@ -37,7 +45,11 @@ export function Sheet({
         'landscape-right',
       ]}
     >
-      <View style={styles.backdrop} testID={testID}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        testID={testID}
+      >
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={dismissable ? onClose : undefined}
@@ -59,7 +71,7 @@ export function Sheet({
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

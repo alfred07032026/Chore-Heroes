@@ -34,6 +34,18 @@ export const CHILD_COLORS = [
   '#5C7CFA',
 ] as const;
 
+/** Spoken names for the hero colors (screen readers can't describe a swatch). */
+export const CHILD_COLOR_NAMES: Record<(typeof CHILD_COLORS)[number], string> = {
+  '#5B3CC4': 'Purple',
+  '#C2255C': 'Raspberry',
+  '#1971C2': 'Blue',
+  '#2B8A3E': 'Green',
+  '#D9480F': 'Orange',
+  '#0C8599': 'Teal',
+  '#862E9C': 'Grape',
+  '#5C7CFA': 'Periwinkle',
+};
+
 export interface TaskTemplate {
   id: string;
   title: string;

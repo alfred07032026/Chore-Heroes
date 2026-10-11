@@ -6,7 +6,7 @@ import { Screen } from '@/components/Screen';
 import { TopBar } from '@/components/TopBar';
 import { isWeakPin } from '@/domain/security';
 import { checkPin, setPin } from '@/services/settings';
-import { mutate, requireDb } from '@/state/appStore';
+import { mutate, requireDb, useAppStore } from '@/state/appStore';
 
 type Step = 'current' | 'new' | 'confirm';
 
@@ -59,6 +59,7 @@ export default function ChangePin() {
               return;
             }
             await mutate((db) => setPin(db, p));
+            useAppStore.getState().showFlash('PIN changed');
             router.back();
           }}
         />

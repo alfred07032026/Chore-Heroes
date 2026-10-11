@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Mascot } from '@/components/Mascot';
+import { Toast } from '@/components/Toast';
 import { Txt } from '@/components/Txt';
 import { migrate } from '@/db/migrations';
 import { openExpoDb } from '@/db/expoDb';
@@ -98,7 +99,21 @@ export default function RootLayout() {
           animation: appReduceMotion ? 'none' : 'default',
         }}
       />
+      <GlobalToast />
     </SafeAreaProvider>
+  );
+}
+
+function GlobalToast() {
+  const flash = useAppStore((s) => s.flash);
+  const clear = useAppStore((s) => s.clearFlash);
+  return (
+    <Toast
+      key={flash?.id ?? 0}
+      message={flash?.message ?? null}
+      icon="check-circle"
+      onHide={clear}
+    />
   );
 }
 

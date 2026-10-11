@@ -40,7 +40,7 @@ export function Keypad({
             borderRadius: radius.round,
             backgroundColor: k === 'back' || k === 'clear' ? colors.surfaceAlt : colors.surface,
             borderWidth: 2,
-            borderColor: colors.border,
+            borderColor: colors.control,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: disabled ? 0.4 : 1,

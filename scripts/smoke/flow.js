@@ -48,7 +48,7 @@ const W = Number(process.argv[3] || 820),
     await page.getByText('Add another child').click();
     await tid('child-name').fill('Leo');
     await page.getByLabel('Robot').click();
-    await page.getByLabel('Color 3').click();
+    await page.getByLabel('Blue', { exact: true }).click();
     await tid('child-save').click();
     await page.waitForTimeout(800);
     await tid('setup-next').click();

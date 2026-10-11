@@ -20,6 +20,8 @@ interface AppState {
   parentLastActive: number;
   /** Settings/export require the extra math gate once per parent session. */
   settingsGatePassed: boolean;
+  /** Short app-wide confirmation ("Job saved") shown by the root toast. */
+  flash: { id: number; message: string } | null;
 
   init(db: Db, settings: AppSettings, setupComplete: boolean): void;
   setSetupComplete(v: boolean): void;
@@ -32,6 +34,8 @@ interface AppState {
   touchParent(): void;
   lockParent(): void;
   passSettingsGate(): void;
+  showFlash(message: string): void;
+  clearFlash(): void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -45,6 +49,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   parentUnlockedAt: null,
   parentLastActive: 0,
   settingsGatePassed: false,
+  flash: null,
 
   init: (db, settings, setupComplete) => set({ db, settings, setupComplete, ready: true }),
   setSetupComplete: (setupComplete) => set({ setupComplete }),
@@ -63,6 +68,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   touchParent: () => set({ parentLastActive: Date.now() }),
   lockParent: () => set({ parentUnlockedAt: null, settingsGatePassed: false }),
   passSettingsGate: () => set({ settingsGatePassed: true }),
+  showFlash: (message) => set((s) => ({ flash: { id: (s.flash?.id ?? 0) + 1, message } })),
+  clearFlash: () => set({ flash: null }),
 }));
 
 export function requireDb(): Db {

@@ -7,6 +7,7 @@ import { describeSchedule, type ScheduleType } from '@/domain/recurrence';
 import type { Child, Task, TaskInput } from '@/domain/types';
 import { hasErrors, validateTask } from '@/domain/validation';
 import { useQuery } from '@/hooks/useQuery';
+import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import { listChildren } from '@/services/children';
 import { archiveTask, createTask, getTask, restoreTask, updateTask } from '@/services/tasks';
 import { mutate, useAppStore } from '@/state/appStore';
@@ -19,6 +20,7 @@ import { StarRow } from '../Stars';
 import { Txt } from '../Txt';
 import { Pressy } from '../Pressy';
 import { Icon } from '../Icon';
+import { ErrorText } from '../ErrorText';
 
 const SCHEDULES: { value: ScheduleType; label: string; icon: string }[] = [
   { value: 'daily', label: 'Every day', icon: 'calendar-today' },
@@ -80,27 +82,37 @@ function TaskForm({
   const taskId = task?.id ?? null;
   const [input, setInput] = useState<TaskInput>(initial);
   const [touched, setTouched] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useSubmitGuard();
   const [error, setError] = useState<string | null>(null);
 
   const errors = validateTask(input);
   const set = <K extends keyof TaskInput>(k: K, v: TaskInput[K]) =>
     setInput((p) => (p ? { ...p, [k]: v } : p));
 
-  const save = async () => {
-    setTouched(true);
-    if (hasErrors(errors)) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await mutate((db) => (taskId ? updateTask(db, taskId, input) : createTask(db, input)));
+  const save = () =>
+    run(async () => {
+      setTouched(true);
+      if (hasErrors(errors)) return;
+      setError(null);
+      try {
+        await mutate((db) => (taskId ? updateTask(db, taskId, input) : createTask(db, input)));
+        useAppStore.getState().showFlash(taskId ? 'Job saved' : `Job added: ${input.title.trim()}`);
+        onDone();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  const setArchived = (archived: boolean) =>
+    run(async () => {
+      if (!task) return;
+      await mutate((db) => (archived ? archiveTask(db, task.id) : restoreTask(db, task.id)));
+      useAppStore
+        .getState()
+        .showFlash(
+          archived ? 'Job archived — turn on "Show archived" to restore it' : 'Job restored',
+        );
       onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   return (
     <View>
@@ -144,7 +156,8 @@ function TaskForm({
         onChangeText={(t) => set('title', t)}
         placeholder="e.g. Feed the dog"
         maxLength={40}
-        error={touched ? errors.title : undefined}
+        error={errors.title}
+        showError={touched}
         hint="Short and simple — it's read aloud to your child."
         testID="task-title"
       />
@@ -197,9 +210,7 @@ function TaskForm({
         })}
       </View>
       {touched && errors.childIds ? (
-        <Txt variant="caption" color={colors.danger}>
-          {errors.childIds}
-        </Txt>
+        <ErrorText variant="caption">{errors.childIds}</ErrorText>
       ) : null}
 
       <View style={{ height: space.md }} />
@@ -251,9 +262,7 @@ function TaskForm({
             })}
           </View>
           {touched && errors.weekdays ? (
-            <Txt variant="caption" color={colors.danger}>
-              {errors.weekdays}
-            </Txt>
+            <ErrorText variant="caption">{errors.weekdays}</ErrorText>
           ) : null}
         </View>
       ) : null}
@@ -293,11 +302,7 @@ function TaskForm({
         testID="task-approval"
       />
 
-      {error ? (
-        <Txt variant="body" color={colors.danger}>
-          {error}
-        </Txt>
-      ) : null}
+      {error ? <ErrorText variant="body">{error}</ErrorText> : null}
       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginTop: space.md }}>
         <Button
           label={taskId ? 'Save changes' : 'Add job'}
@@ -311,7 +316,8 @@ function TaskForm({
             label="Archive"
             icon="archive"
             tone="secondary"
-            onPress={() => void mutate((db) => archiveTask(db, task.id)).then(onDone)}
+            onPress={() => void setArchived(true)}
+            disabled={busy}
           />
         ) : null}
         {task?.archivedAt ? (
@@ -319,7 +325,8 @@ function TaskForm({
             label="Restore"
             icon="archive-arrow-up"
             tone="secondary"
-            onPress={() => void mutate((db) => restoreTask(db, task.id)).then(onDone)}
+            onPress={() => void setArchived(false)}
+            disabled={busy}
           />
         ) : null}
       </View>

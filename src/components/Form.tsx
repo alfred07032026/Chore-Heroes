@@ -1,33 +1,47 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Switch, TextInput, View, type TextInputProps } from 'react-native';
 
 import { colors, radius, space, touch } from '@/theme/tokens';
 import { fontFamily } from '@/theme/fonts';
 import { useAppStore } from '@/state/appStore';
 
+import { ErrorText } from './ErrorText';
 import { Icon } from './Icon';
 import { Pressy } from './Pressy';
 import { Txt } from './Txt';
 
+/**
+ * Labeled text input. `error` is shown once the field has been left (validate on blur) or
+ * when `showError` is set (e.g. after a submit attempt), and is announced to screen readers.
+ */
 export function Field({
   label,
   error,
   hint,
+  showError,
+  onBlur,
   ...input
-}: TextInputProps & { label: string; error?: string; hint?: string }) {
+}: TextInputProps & { label: string; error?: string; hint?: string; showError?: boolean }) {
   const dyslexic = useAppStore((s) => s.settings.dyslexicFont);
+  const [blurred, setBlurred] = useState(false);
+  const visibleError = error && (showError || blurred) ? error : undefined;
   return (
     <View style={{ gap: space.xxs, marginBottom: space.md }}>
       <Txt variant="label">{label}</Txt>
       <TextInput
         accessibilityLabel={label}
+        accessibilityHint={visibleError ?? hint}
         placeholderTextColor={colors.inkSoft}
         maxFontSizeMultiplier={2}
         {...input}
+        onBlur={(e) => {
+          setBlurred(true);
+          onBlur?.(e);
+        }}
         style={{
           minHeight: touch.parent + 4,
           borderWidth: 2,
-          borderColor: error ? colors.danger : colors.border,
+          borderColor: visibleError ? colors.danger : colors.control,
           borderRadius: radius.md,
           paddingHorizontal: space.md,
           backgroundColor: colors.surface,
@@ -36,16 +50,12 @@ export function Field({
           color: colors.ink,
         }}
       />
-      {hint && !error ? (
+      {hint && !visibleError ? (
         <Txt variant="caption" color={colors.inkSoft}>
           {hint}
         </Txt>
       ) : null}
-      {error ? (
-        <Txt variant="caption" color={colors.danger} accessibilityLiveRegion="polite">
-          {error}
-        </Txt>
-      ) : null}
+      <ErrorText variant="caption">{visibleError}</ErrorText>
     </View>
   );
 }
@@ -65,8 +75,16 @@ export function ToggleRow({
   icon?: string;
   testID?: string;
 }) {
+  // The whole row is the touch target (the native switch alone is ~51×31pt).
   return (
-    <View
+    <Pressy
+      testID={testID}
+      onPress={() => onChange(!value)}
+      scaleTo={0.99}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityHint={description}
+      accessibilityState={{ checked: value }}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -84,15 +102,19 @@ export function ToggleRow({
           </Txt>
         ) : null}
       </View>
-      <Switch
-        testID={testID}
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        trackColor={{ true: colors.hero, false: colors.locked }}
-        thumbColor={colors.white}
-      />
-    </View>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Switch
+          value={value}
+          trackColor={{ true: colors.hero, false: colors.control }}
+          thumbColor={colors.white}
+          ios_backgroundColor={colors.control}
+        />
+      </View>
+    </Pressy>
   );
 }
 
@@ -113,6 +135,7 @@ export function Segmented<T extends string | number>({
       <View
         style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}
         accessibilityRole="radiogroup"
+        accessibilityLabel={label}
       >
         {options.map((o) => {
           const selected = o.value === value;
@@ -128,7 +151,7 @@ export function Segmented<T extends string | number>({
                 paddingHorizontal: space.md,
                 borderRadius: radius.round,
                 borderWidth: 2,
-                borderColor: selected ? colors.hero : colors.border,
+                borderColor: selected ? colors.hero : colors.control,
                 backgroundColor: selected ? colors.hero : colors.surface,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -194,8 +217,8 @@ export function Stepper({
         style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}
         accessible={false}
       >
-        {bigStep ? btn(-bigStep, 'chevron-double-left', `Minus ${bigStep}`) : null}
-        {btn(-step, 'minus', `Minus ${step}`)}
+        {bigStep ? btn(-bigStep, 'chevron-double-left', `${label}: minus ${bigStep}`) : null}
+        {btn(-step, 'minus', `${label}: minus ${step}`)}
         <View
           style={{ minWidth: 64, alignItems: 'center' }}
           accessible
@@ -209,8 +232,8 @@ export function Stepper({
         >
           {render ? render(value) : <Txt variant="title">{value}</Txt>}
         </View>
-        {btn(step, 'plus', `Plus ${step}`)}
-        {bigStep ? btn(bigStep, 'chevron-double-right', `Plus ${bigStep}`) : null}
+        {btn(step, 'plus', `${label}: plus ${step}`)}
+        {bigStep ? btn(bigStep, 'chevron-double-right', `${label}: plus ${bigStep}`) : null}
       </View>
     </View>
   );
@@ -240,7 +263,7 @@ export function Chip({
         paddingHorizontal: space.md,
         borderRadius: radius.round,
         borderWidth: 2,
-        borderColor: selected ? color : colors.border,
+        borderColor: selected ? color : colors.control,
         backgroundColor: selected ? color : colors.surface,
         flexDirection: 'row',
         alignItems: 'center',
@@ -271,7 +294,11 @@ export function IconPicker({
   return (
     <View style={{ marginBottom: space.md, gap: space.xxs }}>
       <Txt variant="label">{label}</Txt>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
+      <View
+        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={label}
+      >
         {icons.map((name) => {
           const selected = name === value;
           return (

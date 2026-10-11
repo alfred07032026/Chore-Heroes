@@ -102,7 +102,7 @@ export default function Settings() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen header={<TopBar title="Settings" onBack={() => router.back()} />} maxWidth={820}>
+      <Screen header={<TopBar title="Settings" onBack={() => router.back()} />} maxWidth={720}>
         <SectionTitle>Sound & voice</SectionTitle>
         <Card>
           <ToggleRow

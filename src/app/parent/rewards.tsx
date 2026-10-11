@@ -61,6 +61,15 @@ export default function Rewards() {
           ]
             .filter(Boolean)
             .join(' · ')}
+          accessibilityLabel={[
+            r.title,
+            `costs ${r.cost} ${r.cost === 1 ? 'star' : 'stars'}`,
+            r.weeklyLimit ? `${r.weeklyLimit} per week` : 'no weekly limit',
+            r.needsApproval ? 'needs approval' : 'instant',
+            r.archivedAt ? 'archived' : null,
+          ]
+            .filter(Boolean)
+            .join('. ')}
           onPress={() => open(r.id)}
           right={<StarPill value={r.cost} />}
         />

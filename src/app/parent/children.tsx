@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { SectionTitle } from '@/components/Card';
+import { Sheet } from '@/components/Sheet';
 import { ListRow } from '@/components/parent/ListRow';
 import { Screen } from '@/components/Screen';
 import { Toast } from '@/components/Toast';
@@ -13,12 +14,14 @@ import { Txt } from '@/components/Txt';
 import { MAX_CHILDREN } from '@/domain/validation';
 import { useQuery } from '@/hooks/useQuery';
 import { archiveChild, listChildren, restoreChild } from '@/services/children';
-import { mutate } from '@/state/appStore';
+import { mutate, useAppStore } from '@/state/appStore';
+import type { Child } from '@/domain/types';
 import { colors, space } from '@/theme/tokens';
 
 export default function Children() {
   const q = useQuery((db) => listChildren(db, true), []);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<Child | null>(null);
   const all = q.data ?? [];
   const active = all.filter((c) => !c.archivedAt);
   const archived = all.filter((c) => c.archivedAt);
@@ -67,7 +70,8 @@ export default function Children() {
                   tone="ghost"
                   size="compact"
                   icon="archive"
-                  onPress={() => void run(() => mutate((db) => archiveChild(db, c.id)))}
+                  onPress={() => setConfirmArchive(c)}
+                  accessibilityLabel={`Archive ${c.name}`}
                 />
               }
             />
@@ -94,7 +98,13 @@ export default function Children() {
                       tone="secondary"
                       size="compact"
                       icon="archive-arrow-up"
-                      onPress={() => void run(() => mutate((db) => restoreChild(db, c.id)))}
+                      onPress={() =>
+                        void run(async () => {
+                          await mutate((db) => restoreChild(db, c.id));
+                          useAppStore.getState().showFlash(`${c.name} restored`);
+                        })
+                      }
+                      accessibilityLabel={`Restore ${c.name}`}
                     />
                   }
                 />
@@ -104,6 +114,36 @@ export default function Children() {
         ) : null}
       </Screen>
       <Toast message={toast} icon="alert-circle" onHide={() => setToast(null)} />
+      <Sheet visible={!!confirmArchive} onClose={() => setConfirmArchive(null)} width={480}>
+        {confirmArchive ? (
+          <View style={{ gap: space.md }}>
+            <Txt variant="title" accessibilityRole="header">
+              Archive {confirmArchive.name}?
+            </Txt>
+            <Txt variant="body">
+              {confirmArchive.name} will disappear from the kids&apos; screen and won&apos;t get new
+              jobs. Stars, badges and history are kept, and you can restore the profile any time.
+            </Txt>
+            <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
+              <Button label="Cancel" tone="secondary" onPress={() => setConfirmArchive(null)} />
+              <Button
+                label="Archive"
+                icon="archive"
+                tone="danger"
+                testID="confirm-archive-child"
+                onPress={() => {
+                  const c = confirmArchive;
+                  setConfirmArchive(null);
+                  void run(async () => {
+                    await mutate((db) => archiveChild(db, c.id));
+                    useAppStore.getState().showFlash(`${c.name} archived`);
+                  });
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
+      </Sheet>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
@@ -33,6 +33,7 @@ export default function Setup() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
+  const finishing = useRef(false);
   const [tasks, setTasks] = useState<string[]>(STARTER_TASKS);
   const [rewards, setRewards] = useState<string[]>(STARTER_REWARDS);
   const today = useAppStore((s) => s.today);
@@ -65,6 +66,9 @@ export default function Setup() {
   );
 
   const finish = async (withStarter: boolean) => {
+    // Ref guard: a double tap must not create the starter jobs and rewards twice.
+    if (finishing.current) return;
+    finishing.current = true;
     setBusy(true);
     try {
       await mutate(async (db) => {
@@ -91,6 +95,7 @@ export default function Setup() {
       useAppStore.getState().setSetupComplete(true);
       setStep('done');
     } finally {
+      finishing.current = false;
       setBusy(false);
     }
   };

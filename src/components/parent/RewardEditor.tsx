@@ -5,6 +5,7 @@ import { REWARD_ICONS, REWARD_TEMPLATES } from '@/domain/catalog';
 import type { Reward, RewardInput } from '@/domain/types';
 import { hasErrors, validateReward } from '@/domain/validation';
 import { useQuery } from '@/hooks/useQuery';
+import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import {
   archiveReward,
   createReward,
@@ -12,13 +13,14 @@ import {
   restoreReward,
   updateReward,
 } from '@/services/rewards';
-import { mutate } from '@/state/appStore';
+import { mutate, useAppStore } from '@/state/appStore';
 import { colors, space } from '@/theme/tokens';
 
 import { Button } from '../Button';
 import { Chip, Field, IconPicker, Stepper, ToggleRow } from '../Form';
 import { StarGlyph } from '../Stars';
 import { Txt } from '../Txt';
+import { ErrorText } from '../ErrorText';
 
 export function RewardEditor({
   rewardId,
@@ -58,30 +60,44 @@ function RewardForm({
   const rewardId = reward?.id ?? null;
   const [input, setInput] = useState<RewardInput>(initial);
   const [touched, setTouched] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useSubmitGuard();
   const [error, setError] = useState<string | null>(null);
 
   const errors = validateReward(input);
   const set = <K extends keyof RewardInput>(k: K, v: RewardInput[K]) =>
     setInput((p) => (p ? { ...p, [k]: v } : p));
 
-  const save = async () => {
-    setTouched(true);
-    if (hasErrors(errors)) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await mutate(async (db) => {
-        if (rewardId) await updateReward(db, rewardId, input);
-        else await createReward(db, input);
-      });
+  const save = () =>
+    run(async () => {
+      setTouched(true);
+      if (hasErrors(errors)) return;
+      setError(null);
+      try {
+        await mutate(async (db) => {
+          if (rewardId) await updateReward(db, rewardId, input);
+          else await createReward(db, input);
+        });
+        useAppStore
+          .getState()
+          .showFlash(rewardId ? 'Reward saved' : `Reward added: ${input.title.trim()}`);
+        onDone();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  const setArchived = (archived: boolean) =>
+    run(async () => {
+      if (!reward) return;
+      await mutate((db) =>
+        archived ? archiveReward(db, reward.id) : restoreReward(db, reward.id),
+      );
+      useAppStore
+        .getState()
+        .showFlash(
+          archived ? 'Reward archived — turn on "Show archived" to restore it' : 'Reward restored',
+        );
       onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   return (
     <View>
@@ -124,7 +140,8 @@ function RewardForm({
         onChangeText={(t) => set('title', t)}
         placeholder="e.g. Pick the movie"
         maxLength={40}
-        error={touched ? errors.title : undefined}
+        error={errors.title}
+        showError={touched}
         testID="reward-title"
       />
       <IconPicker icons={REWARD_ICONS} value={input.icon} onChange={(v) => set('icon', v)} />
@@ -165,11 +182,7 @@ function RewardForm({
         value={input.needsApproval}
         onChange={(v) => set('needsApproval', v)}
       />
-      {error ? (
-        <Txt variant="body" color={colors.danger}>
-          {error}
-        </Txt>
-      ) : null}
+      {error ? <ErrorText variant="body">{error}</ErrorText> : null}
       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', marginTop: space.md }}>
         <Button
           label={rewardId ? 'Save changes' : 'Add reward'}
@@ -183,7 +196,8 @@ function RewardForm({
             label="Archive"
             icon="archive"
             tone="secondary"
-            onPress={() => void mutate((db) => archiveReward(db, reward.id)).then(onDone)}
+            onPress={() => void setArchived(true)}
+            disabled={busy}
           />
         ) : null}
         {reward?.archivedAt ? (
@@ -191,7 +205,8 @@ function RewardForm({
             label="Restore"
             icon="archive-arrow-up"
             tone="secondary"
-            onPress={() => void mutate((db) => restoreReward(db, reward.id)).then(onDone)}
+            onPress={() => void setArchived(false)}
+            disabled={busy}
           />
         ) : null}
       </View>

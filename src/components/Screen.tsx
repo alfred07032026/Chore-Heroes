@@ -1,5 +1,13 @@
 import { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLayout } from '@/hooks/useLayout';
@@ -34,14 +42,22 @@ export function Screen({
     >
       {header ? <View style={{ paddingHorizontal: gutter }}>{header}</View> : null}
       {scroll ? (
-        <ScrollView
+        // iOS: shrink the scroll area above the keyboard so focused fields stay visible
+        // (Android resizes the window itself).
+        <KeyboardAvoidingView
           style={styles.root}
-          contentContainerStyle={inner}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {children}
-        </ScrollView>
+          <ScrollView
+            style={styles.root}
+            contentContainerStyle={inner}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </KeyboardAvoidingView>
       ) : (
         <View style={[styles.root, ...inner]}>{children}</View>
       )}

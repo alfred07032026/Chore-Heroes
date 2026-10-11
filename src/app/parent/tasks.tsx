@@ -62,6 +62,25 @@ export default function Tasks() {
           subtitle={`${describeSchedule({ type: t.scheduleType, weekdays: t.weekdays, startDate: t.startDate })}${
             t.needsApproval ? ' · needs approval' : ''
           }${t.archivedAt ? ' · archived' : ''}`}
+          accessibilityLabel={[
+            t.title,
+            `${t.stars} ${t.stars === 1 ? 'star' : 'stars'}`,
+            describeSchedule({
+              type: t.scheduleType,
+              weekdays: t.weekdays,
+              startDate: t.startDate,
+            }),
+            `for ${
+              t.childIds
+                .map((id) => kidById.get(id)?.name)
+                .filter(Boolean)
+                .join(', ') || 'nobody'
+            }`,
+            t.needsApproval ? 'needs approval' : null,
+            t.archivedAt ? 'archived' : null,
+          ]
+            .filter(Boolean)
+            .join('. ')}
           onPress={() => open(t.id)}
           right={
             <View style={{ alignItems: 'flex-end', gap: 4 }}>

@@ -19,6 +19,7 @@ export function ListRow({
   muted,
   testID,
   leading,
+  accessibilityLabel,
 }: {
   icon?: string;
   iconColor?: string;
@@ -31,6 +32,8 @@ export function ListRow({
   muted?: boolean;
   testID?: string;
   leading?: ReactNode;
+  /** Full spoken description when the row shows information only visually (stars, avatars). */
+  accessibilityLabel?: string;
 }) {
   const body = (
     <>
@@ -69,7 +72,8 @@ export function ListRow({
   return (
     <Pressy
       onPress={onPress}
-      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+      accessibilityLabel={accessibilityLabel ?? (subtitle ? `${title}. ${subtitle}` : title)}
+      accessibilityState={{ selected: !!selected }}
       style={style}
       scaleTo={0.98}
       testID={testID}

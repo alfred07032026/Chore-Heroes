@@ -8,6 +8,7 @@ import { Button } from './Button';
 import { Icon } from './Icon';
 import { applyKey, Keypad } from './Keypad';
 import { Txt } from './Txt';
+import { ErrorText } from './ErrorText';
 
 /**
  * Parental gate: an adult-level multiplication question answered on a keypad.
@@ -81,11 +82,7 @@ export function MathGate({
       >
         <Txt variant="title">{input || ' '}</Txt>
       </View>
-      {wrong ? (
-        <Txt variant="body" color={colors.danger} accessibilityLiveRegion="polite">
-          Not quite — here is a new question.
-        </Txt>
-      ) : null}
+      {wrong ? <ErrorText variant="body">Not quite — here is a new question.</ErrorText> : null}
       <Keypad onKey={(k) => setInput((v) => applyKey(v, k, 4))} keySize={68} />
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         {onCancel ? <Button label="Cancel" tone="secondary" onPress={onCancel} /> : null}

@@ -25,7 +25,8 @@ export const colors = {
   flameLight: '#FFE8D6',
   waiting: '#5C7CFA',
   waitingLight: '#E5EBFF',
-  border: '#E3DCCF',
+  border: '#E3DCCF', // decorative dividers/card edges only
+  control: '#8E88A3', // borders/tracks of interactive controls: 3.4:1 on white (WCAG 1.4.11)
   locked: '#B9B3C9', // decorative/disabled only — never behind meaningful icons
   lockedStrong: '#6E6888', // locked badge circles: white lock icon 5.3:1
   white: '#FFFFFF',

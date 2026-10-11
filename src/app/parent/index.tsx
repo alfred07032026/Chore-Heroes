@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { Grid, TwoPane, useGridColumns } from '@/components/Misc';
 import { ListRow } from '@/components/parent/ListRow';
 import { Pressy } from '@/components/Pressy';
+import { LoadingScreen } from '@/components/Loading';
 import { Screen } from '@/components/Screen';
 import { StarPill } from '@/components/Stars';
 import { TopBar } from '@/components/TopBar';
@@ -44,6 +45,7 @@ export default function ParentHome() {
     [today],
   );
   const data = q.data;
+  if (!data) return <LoadingScreen />;
 
   const exit = () => {
     lock();

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { AVATARS, CHILD_COLORS } from '@/domain/catalog';
+import { AVATARS, CHILD_COLOR_NAMES, CHILD_COLORS } from '@/domain/catalog';
 import type { ChildInput } from '@/domain/types';
 import { hasErrors, MAX_AGE, MIN_AGE, validateChild } from '@/domain/validation';
+import { useSubmitGuard } from '@/hooks/useSubmitGuard';
 import { colors, radius, space } from '@/theme/tokens';
 
 import { Avatar } from './Avatar';
@@ -30,6 +31,7 @@ export function ChildForm({
     initial ?? { name: '', avatar: 'cat', age: 7, color: CHILD_COLORS[0] },
   );
   const [touched, setTouched] = useState(false);
+  const guard = useSubmitGuard();
   const errors = validateChild(input);
   const set = <K extends keyof ChildInput>(k: K, v: ChildInput[K]) =>
     setInput((p) => ({ ...p, [k]: v }));
@@ -47,12 +49,15 @@ export function ChildForm({
         autoCapitalize="words"
         autoCorrect={false}
         maxLength={20}
-        error={touched ? errors.name : undefined}
+        error={errors.name}
+        showError={touched}
         testID="child-name"
       />
       <Txt variant="label">Avatar</Txt>
       <View
         style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginVertical: space.xs }}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Avatar"
       >
         {AVATARS.map((a) => {
           const selected = a.id === input.avatar;
@@ -86,6 +91,8 @@ export function ChildForm({
           marginVertical: space.xs,
           marginBottom: space.md,
         }}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Hero color"
       >
         {CHILD_COLORS.map((c) => {
           const selected = c === input.color;
@@ -95,7 +102,7 @@ export function ChildForm({
               onPress={() => set('color', c)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={`Color ${CHILD_COLORS.indexOf(c) + 1}`}
+              accessibilityLabel={CHILD_COLOR_NAMES[c]}
               style={{
                 width: 52,
                 height: 52,
@@ -133,11 +140,12 @@ export function ChildForm({
         <Button
           label={submitLabel}
           icon="check"
-          busy={busy}
+          busy={busy || guard.busy}
           testID="child-save"
           onPress={() => {
             setTouched(true);
-            if (!hasErrors(errors)) void onSubmit({ ...input, name: input.name.trim() });
+            if (!hasErrors(errors))
+              void guard.run(async () => onSubmit({ ...input, name: input.name.trim() }));
           }}
         />
       </View>
