@@ -98,6 +98,13 @@
           "color": "#5B3CC4"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "208b965f-9f79-4b03-b91b-caf0538e45d1"
+      }
+    },
+    "owner": "alfrednasr27"
   }
 }
